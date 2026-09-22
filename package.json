@@ -1,0 +1,18 @@
+{
+  "name": "cafe-pos",
+  "version": "1.0.0",
+  "description": "ระบบสั่งอาหารร้านคาเฟ่ - มินิโปรเจกต์วิชา Object-Oriented Programming",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && node dist/main.js",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["oop", "typescript", "pos", "cafe"],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  }
+}
