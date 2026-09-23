@@ -1,35 +1,18 @@
 import * as readline from 'node:readline/promises';
-import { Money } from '../core/Money.ts';
-import { CafeError, OutOfStockError } from '../core/errors.ts';
-import { MemberDiscount, PromoCodeDiscount } from '../discount/Discount.ts';
-import { Dessert } from '../menu/Dessert.ts';
-import { Drink, Size, Temperature } from '../menu/Drink.ts';
-import { Food, SpiceLevel } from '../menu/Food.ts';
-import { AddOn, Category, type MenuItem } from '../menu/MenuItem.ts';
-import { Order } from '../order/Order.ts';
-import { CashPayment, type Payment, QrPayment } from '../payment/Payment.ts';
-import { Customer, Staff } from '../people/Person.ts';
-
-/** ตัวเลือกเสริมที่ร้านมีขาย */
-const TOPPINGS = [
-  new AddOn('ไข่มุก', Money.baht(15)),
-  new AddOn('วิปครีม', Money.baht(20)),
-  new AddOn('เอสเพรสโซช็อตพิเศษ', Money.baht(20)),
-] as const;
-
-const FRIED_EGG = new AddOn('ไข่ดาว', Money.baht(10));
-
-/** โค้ดส่วนลดที่ร้านแจก */
-const PROMO_CODES: Readonly<Record<string, PromoCodeDiscount>> = {
-  OPEN5: new PromoCodeDiscount('โปรเปิดร้าน 5%', 5, Money.baht(300)),
-  SAVE10: new PromoCodeDiscount('โปรลด 10%', 10, Money.baht(500)),
-};
+import { Customer } from './Customer.ts';
+import { Dessert } from './Dessert.ts';
+import { Drink, Size, Temperature, TOPPINGS, type Topping } from './Drink.ts';
+import { Food, SpiceLevel } from './Food.ts';
+import { Category, type MenuItem } from './MenuItem.ts';
+import { Order } from './Order.ts';
+import { CashPayment, type Payment, QrPayment } from './Payment.ts';
+import { CafeError, baht } from './utils.ts';
 
 /**
- * CafeApp - หน้าจอสั่งอาหารแบบพิมพ์เลขเลือก
+ * CafeApp - หน้าจอสั่งอาหารแบบพิมพ์เลขเลือก  [คลาสที่ 12]
  *
- * คลาสนี้ทำหน้าที่ "รับข้อมูลจากผู้ใช้" เท่านั้น
- * การคิดราคา ส่วนลด และตัดเงิน อยู่ในคลาสของ domain ทั้งหมด
+ * คลาสนี้ทำหน้าที่ "คุยกับผู้ใช้" อย่างเดียว
+ * การคิดราคา ส่วนลด และตัดเงิน อยู่ในคลาส domain ทั้งหมด
  * แยกกันแบบนี้ทำให้เปลี่ยนไปทำเป็นเว็บทีหลังได้โดยไม่ต้องแก้ตรรกะธุรกิจเลย
  */
 export class CafeApp {
@@ -40,12 +23,11 @@ export class CafeApp {
 
   private readonly menu: MenuItem[] = [];
   private readonly stock = new Map<string, number>();
-  private readonly staff = new Staff('มายด์', 'บาริสต้า');
 
   private customer?: Customer;
   private order!: Order;
   private billCount = 0;
-  private salesTotal = Money.zero();
+  private salesTotal = 0;
 
   constructor() {
     this.seedMenu();
@@ -57,7 +39,6 @@ export class CafeApp {
 
   async start(): Promise<void> {
     console.log('\n☕ ยินดีต้อนรับสู่ Cafe OOP');
-
     await this.askCustomer();
     this.openNewOrder();
 
@@ -66,39 +47,36 @@ export class CafeApp {
       running = await this.showMainMenu();
     }
 
-    console.log(`\nปิดร้านแล้ว — ขายได้ ${this.billCount} บิล รวม ${this.salesTotal}`);
-    console.log('ขอบคุณที่ใช้บริการ 🙏\n');
+    console.log(`\nปิดร้านแล้ว — ขายได้ ${this.billCount} บิล รวม ${baht(this.salesTotal)}`);
     this.rl.close();
   }
 
-  /** ถามว่าใครเป็นลูกค้า - ถ้าไม่กรอกชื่อถือว่าเป็นลูกค้าทั่วไป (ไม่สะสมแต้ม) */
+  /** ถามว่าใครเป็นลูกค้า - ไม่กรอกชื่อถือว่าเป็นลูกค้าทั่วไป (ไม่สะสมแต้ม ไม่มีส่วนลด) */
   private async askCustomer(): Promise<void> {
     const name = (await this.rl.question('ชื่อลูกค้า (Enter = ลูกค้าทั่วไป): ')).trim();
     if (name.length === 0) {
-      console.log('-> ลูกค้าทั่วไป (ไม่สะสมแต้ม)');
+      console.log('-> ลูกค้าทั่วไป');
       return;
     }
 
-    const pointsInput = await this.rl.question('แต้มสะสมเดิม (Enter = 0): ');
-    const points = Number.parseInt(pointsInput, 10);
-    this.customer = new Customer(name, Number.isNaN(points) ? 0 : points);
-    console.log(`-> ${this.customer.describe()}`);
+    const points = await this.askNumber('แต้มสะสมเดิม (Enter = 0): ', 0);
+    this.customer = new Customer(name, points);
+    console.log(`-> ${this.customer.describe()} | ส่วนลด ${this.customer.discountRate}%`);
   }
 
   // ==================== เมนูหลัก ====================
 
-  /** คืน false เมื่อผู้ใช้เลือกออกจากโปรแกรม */
+  /** คืน false เมื่อผู้ใช้เลือกปิดร้าน */
   private async showMainMenu(): Promise<boolean> {
     console.log(`
 ${'='.repeat(46)}
-  บิล ${this.order.id} | ${this.order.totalItems} ชิ้น | ยอด ${this.order.total}
+  บิล ${this.order.id} | ${this.order.totalItems} ชิ้น | ยอด ${baht(this.order.total)}
 ${'='.repeat(46)}
   1) ดูเมนู
   2) สั่งของเข้าบิล
   3) ดูบิลปัจจุบัน
   4) ลบรายการในบิล
-  5) ใส่โค้ดส่วนลด
-  6) ชำระเงิน
+  5) ชำระเงิน
   0) ปิดร้าน`);
 
     const choice = (await this.rl.question('\nเลือก: ')).trim();
@@ -120,9 +98,6 @@ ${'='.repeat(46)}
           await this.removeItem();
           break;
         case '5':
-          await this.applyPromoCode();
-          break;
-        case '6':
           await this.checkout();
           break;
         case '0':
@@ -132,9 +107,7 @@ ${'='.repeat(46)}
       }
     } catch (error) {
       if (error instanceof CafeError) {
-        console.log(`\n!! ${error.name}: ${error.message}`);
-      } else if (error instanceof RangeError) {
-        console.log(`\n!! ข้อมูลไม่ถูกต้อง: ${error.message}`);
+        console.log(`\n!! ${error.message}`);
       } else {
         throw error;
       }
@@ -150,9 +123,10 @@ ${'='.repeat(46)}
       console.log(`\n[${category}]`);
       for (const item of this.menu.filter((m) => m.category === category)) {
         const left = this.stock.get(item.id) ?? 0;
-        const status = left === 0 ? 'ของหมด' : `เหลือ ${left}`;
         // เรียก describe() ตัวเดียว ได้ราคาของทุกชนิดสินค้า (Polymorphism)
-        console.log(`  ${item.id}  ${item.describe().padEnd(34)} ${status}`);
+        console.log(
+          `  ${item.id}  ${item.describe().padEnd(30)} ${left === 0 ? 'ของหมด' : `เหลือ ${left}`}`,
+        );
       }
     }
   }
@@ -185,43 +159,38 @@ ${'='.repeat(46)}
 
     this.reserveStock(item, quantity);
     this.order.addItem(item, quantity);
-
-    console.log(`\n>> เพิ่ม ${item.fullName} x${quantity} = ${item.calculatePrice().times(quantity)}`);
+    console.log(`\n>> เพิ่ม ${item.fullName} x${quantity} = ${baht(item.calculatePrice() * quantity)}`);
   }
 
   private async customizeDrink(drink: Drink): Promise<Drink> {
     const sizes = [Size.Small, Size.Medium, Size.Large];
     const temps = [Temperature.Hot, Temperature.Iced, Temperature.Blended];
 
-    const sizeChoice = await this.askNumber('  ขนาด 1=S(-15%) 2=M 3=L(+20%) (Enter = 2): ', 2);
-    const tempChoice = await this.askNumber('  1=ร้อน 2=เย็น(+10) 3=ปั่น(+20) (Enter = 1): ', 1);
+    const size = await this.askNumber('  ขนาด 1=S(-15%) 2=M 3=L(+20%) (Enter = 2): ', 2);
+    const temp = await this.askNumber('  1=ร้อน 2=เย็น(+10) 3=ปั่น(+20) (Enter = 1): ', 1);
 
     console.log('  ท็อปปิ้ง:');
     TOPPINGS.forEach((topping, index) => {
-      console.log(`    ${index + 1}) ${topping.name} +${topping.price}`);
+      console.log(`    ${index + 1}) ${topping.name} +${baht(topping.price)}`);
     });
-    const toppingInput = await this.rl.question('  เลือกท็อปปิ้ง คั่นด้วย , (Enter = ไม่ใส่): ');
-
-    const toppings = toppingInput
+    const input = await this.rl.question('  เลือกท็อปปิ้ง คั่นด้วย , (Enter = ไม่ใส่): ');
+    const toppings = input
       .split(',')
       .map((part) => TOPPINGS[Number.parseInt(part.trim(), 10) - 1])
-      .filter((topping): topping is AddOn => topping !== undefined);
+      .filter((topping): topping is Topping => topping !== undefined);
 
     // ทุก with...() คืนแก้วใหม่ เมนูต้นฉบับในร้านไม่เปลี่ยน (Immutability)
     return drink
-      .withSize(sizes[sizeChoice - 1] ?? Size.Medium)
-      .withTemperature(temps[tempChoice - 1] ?? Temperature.Hot)
-      .withToppings(...toppings);
+      .withSize(sizes[size - 1] ?? Size.Medium)
+      .withTemperature(temps[temp - 1] ?? Temperature.Hot)
+      .withToppings(toppings);
   }
 
   private async customizeFood(food: Food): Promise<Food> {
     const levels = [SpiceLevel.None, SpiceLevel.Mild, SpiceLevel.Hot];
-
     const spice = await this.askNumber('  1=ไม่เผ็ด 2=เผ็ดน้อย 3=เผ็ดมาก (Enter = 1): ', 1);
-    const egg = await this.askYesNo(`  เพิ่มไข่ดาว +${FRIED_EGG.price}? (y/N): `);
-
-    const withSpice = food.withSpiceLevel(levels[spice - 1] ?? SpiceLevel.None);
-    return egg ? withSpice.withAddOns(FRIED_EGG) : withSpice;
+    const egg = await this.askYesNo('  เพิ่มไข่ดาว +10.00 บาท? (y/N): ');
+    return food.withOptions(levels[spice - 1] ?? SpiceLevel.None, egg);
   }
 
   private async customizeDessert(dessert: Dessert): Promise<Dessert> {
@@ -249,35 +218,18 @@ ${'='.repeat(46)}
     }
 
     this.order.lines.forEach((line, index) => {
-      console.log(`  ${index + 1}) ${line.describe()}  ${line.subtotal}`);
+      console.log(`  ${index + 1}) ${line.describe()}  ${baht(line.subtotal)}`);
     });
 
     const lineNumber = await this.askNumber('ลบลำดับที่ (0 = ยกเลิก): ', 0);
     if (lineNumber === 0) return;
 
     const removed = this.order.removeLine(lineNumber);
-    this.returnStock(removed.item.id, removed.quantity);
+    this.stock.set(removed.item.id, (this.stock.get(removed.item.id) ?? 0) + removed.quantity);
     console.log(`>> ลบ ${removed.describe()} แล้ว`);
   }
 
-  // ==================== 5) โค้ดส่วนลด ====================
-
-  private async applyPromoCode(): Promise<void> {
-    console.log(`\nโค้ดที่ใช้ได้: ${Object.keys(PROMO_CODES).join(', ')}`);
-    const code = (await this.rl.question('ใส่โค้ด (Enter = ยกเลิก): ')).trim().toUpperCase();
-    if (code.length === 0) return;
-
-    const promo = PROMO_CODES[code];
-    if (promo === undefined) {
-      console.log(`!! ไม่มีโค้ด "${code}"`);
-      return;
-    }
-
-    this.order.applyDiscount(promo);
-    console.log(`>> ใส่ "${promo.name}" แล้ว (มีผลเมื่อยอดถึงขั้นต่ำ)`);
-  }
-
-  // ==================== 6) ชำระเงิน ====================
+  // ==================== 5) ชำระเงิน ====================
 
   private async checkout(): Promise<void> {
     if (this.order.isEmpty) {
@@ -285,69 +237,58 @@ ${'='.repeat(46)}
       return;
     }
 
-    console.log(`\nยอดที่ต้องชำระ: ${this.order.total}`);
+    console.log(`\nยอดที่ต้องชำระ: ${baht(this.order.total)}`);
     const method = await this.askNumber('  1=เงินสด  2=QR พร้อมเพย์  0=ยกเลิก: ', 0);
     if (method === 0) return;
 
     // ตัวแปรเป็นชนิด Payment (คลาสแม่) แต่เก็บ object ของคลาสลูกได้ทั้งคู่
     let payment: Payment;
     if (method === 1) {
-      const cash = await this.askNumber('  รับเงินมา (บาท): ', 0);
-      payment = new CashPayment(Money.baht(cash));
+      payment = new CashPayment(await this.askNumber('  รับเงินมา (บาท): ', 0));
     } else if (method === 2) {
-      const promptPayId = await this.rl.question('  เบอร์พร้อมเพย์: ');
-      payment = new QrPayment(promptPayId);
+      payment = new QrPayment(await this.rl.question('  เบอร์พร้อมเพย์: '));
     } else {
       console.log('!! ไม่มีวิธีชำระเงินนี้');
       return;
     }
 
-    // ถ้าจ่ายไม่พอ payWith() จะ throw PaymentError แล้วบิลจะไม่ถูกปิด
-    const result = this.order.payWith(payment);
+    const change = this.order.payWith(payment);
 
     console.log('\n--- ใบสั่งทำ ---');
-    for (const ticket of this.staff.serve(this.order)) {
-      console.log(ticket);
+    for (const ticket of this.order.kitchenTickets()) {
+      console.log(`  ${ticket}`);
     }
+    console.log(`  เสร็จประมาณ ${this.order.estimatedWaitMinutes()} นาที`);
 
     console.log(`\n${this.order.receipt()}`);
-    console.log(`\n${result.describe()}`);
+    if (change > 0) {
+      console.log(`\n>> เงินทอน ${baht(change)}`);
+    }
     if (this.customer !== undefined) {
-      console.log(`แต้มสะสมของ ${this.customer.name}: ${this.customer.loyaltyPoints} แต้ม`);
+      console.log(`>> แต้มสะสมของ ${this.customer.name}: ${this.customer.loyaltyPoints} แต้ม`);
     }
 
     this.billCount += 1;
-    this.salesTotal = this.salesTotal.plus(this.order.total);
+    this.salesTotal += this.order.total;
     this.openNewOrder();
   }
 
   // ==================== ตัวช่วย ====================
 
   private openNewOrder(): void {
-    const id = `A${(this.billCount + 1).toString().padStart(3, '0')}`;
-    this.order = new Order(id, this.customer);
-
-    // สมาชิกได้ส่วนลดอัตโนมัติทุกบิล ไม่ต้องใส่โค้ด
-    if (this.customer !== undefined) {
-      this.order.applyDiscount(new MemberDiscount());
-    }
+    this.order = new Order(`A${(this.billCount + 1).toString().padStart(3, '0')}`, this.customer);
   }
 
   private reserveStock(item: MenuItem, quantity: number): void {
     const available = this.stock.get(item.id) ?? 0;
     if (available < quantity) {
-      throw new OutOfStockError(item.name, quantity, available);
+      throw new CafeError(`"${item.name}" มีไม่พอ (ขอ ${quantity} เหลือ ${available})`);
     }
     this.stock.set(item.id, available - quantity);
   }
 
-  private returnStock(itemId: string, quantity: number): void {
-    this.stock.set(itemId, (this.stock.get(itemId) ?? 0) + quantity);
-  }
-
   private async askNumber(prompt: string, fallback: number): Promise<number> {
-    const answer = await this.rl.question(prompt);
-    const value = Number.parseFloat(answer.trim());
+    const value = Number.parseFloat((await this.rl.question(prompt)).trim());
     return Number.isNaN(value) ? fallback : value;
   }
 
@@ -363,18 +304,18 @@ ${'='.repeat(46)}
       this.stock.set(item.id, stock);
     };
 
-    add(new Drink('D01', 'ลาเต้', Money.baht(55)), 20);
-    add(new Drink('D02', 'อเมริกาโน่', Money.baht(45)), 20);
-    add(new Drink('D03', 'มัทฉะลาเต้', Money.baht(65)), 10);
-    add(new Drink('D04', 'ชาไทย', Money.baht(50)), 15);
-    add(new Drink('D05', 'โกโก้', Money.baht(60)), 2);
+    add(new Drink('D01', 'ลาเต้', 55), 20);
+    add(new Drink('D02', 'อเมริกาโน่', 45), 20);
+    add(new Drink('D03', 'มัทฉะลาเต้', 65), 10);
+    add(new Drink('D04', 'ชาไทย', 50), 15);
+    add(new Drink('D05', 'โกโก้', 60), 2);
 
-    add(new Food('F01', 'ข้าวผัดกุ้ง', Money.baht(89), 10), 8);
-    add(new Food('F02', 'สปาเกตตีคาร์โบนารา', Money.baht(129), 12), 6);
-    add(new Food('F03', 'แซนด์วิชแฮมชีส', Money.baht(69), 5), 10);
+    add(new Food('F01', 'ข้าวผัดกุ้ง', 89, 10), 8);
+    add(new Food('F02', 'สปาเกตตีคาร์โบนารา', 129, 12), 6);
+    add(new Food('F03', 'แซนด์วิชแฮมชีส', 69, 5), 10);
 
-    add(new Dessert('S01', 'บราวนี', Money.baht(65)), 12);
-    add(new Dessert('S02', 'ชีสเค้ก', Money.baht(79)), 8);
-    add(new Dessert('S03', 'ครัวซองต์', Money.baht(45)), 10);
+    add(new Dessert('S01', 'บราวนี', 65), 12);
+    add(new Dessert('S02', 'ชีสเค้ก', 79), 8);
+    add(new Dessert('S03', 'ครัวซองต์', 45), 10);
   }
 }
