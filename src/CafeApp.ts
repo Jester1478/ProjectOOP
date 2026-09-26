@@ -1,5 +1,5 @@
 import * as readline from 'node:readline/promises';
-import { Customer } from './Customer.ts';
+import { Customer, MembershipTier } from './Customer.ts';
 import { Dessert } from './Dessert.ts';
 import { Drink, Size, Temperature, TOPPINGS, type Topping } from './Drink.ts';
 import { Food, SpiceLevel } from './Food.ts';
@@ -51,7 +51,7 @@ export class CafeApp {
     this.rl.close();
   }
 
-  /** ถามว่าใครเป็นลูกค้า - ไม่กรอกชื่อถือว่าเป็นลูกค้าทั่วไป (ไม่สะสมแต้ม ไม่มีส่วนลด) */
+  /** ถามว่าใครเป็นลูกค้า - ไม่กรอกชื่อถือว่าเป็นลูกค้าทั่วไป (ไม่มีส่วนลด) */
   private async askCustomer(): Promise<void> {
     const name = (await this.rl.question('ชื่อลูกค้า (Enter = ลูกค้าทั่วไป): ')).trim();
     if (name.length === 0) {
@@ -59,8 +59,13 @@ export class CafeApp {
       return;
     }
 
-    const points = await this.askNumber('แต้มสะสมเดิม (Enter = 0): ', 0);
-    this.customer = new Customer(name, points);
+    const tiers = [MembershipTier.Regular, MembershipTier.Silver, MembershipTier.Gold];
+    const choice = await this.askNumber(
+      'ระดับสมาชิก 1=ทั่วไป 2=เงิน(5%) 3=ทอง(10%) (Enter = 1): ',
+      1,
+    );
+
+    this.customer = new Customer(name, tiers[choice - 1] ?? MembershipTier.Regular);
     console.log(`-> ${this.customer.describe()} | ส่วนลด ${this.customer.discountRate}%`);
   }
 
@@ -263,9 +268,6 @@ ${'='.repeat(46)}
     console.log(`\n${this.order.receipt()}`);
     if (change > 0) {
       console.log(`\n>> เงินทอน ${baht(change)}`);
-    }
-    if (this.customer !== undefined) {
-      console.log(`>> แต้มสะสมของ ${this.customer.name}: ${this.customer.loyaltyPoints} แต้ม`);
     }
 
     this.billCount += 1;

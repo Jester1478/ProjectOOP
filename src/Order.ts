@@ -125,10 +125,7 @@ export class Order {
 
   // ---------- ชำระเงิน ----------
 
-  /**
-   * ชำระเงิน - รับ Payment ชนิดไหนก็ได้ (Polymorphism)
-   * ถ้ามีลูกค้าผูกกับบิล จะสะสมแต้มให้อัตโนมัติ
-   */
+  /** ชำระเงิน - รับ Payment ชนิดไหนก็ได้ (Polymorphism) */
   payWith(payment: Payment): number {
     this.assertNotPaid('ชำระเงิน');
     if (this.isEmpty) {
@@ -139,7 +136,6 @@ export class Order {
     this.change = payment.pay(this.total);
     this.paymentMethod = payment.method;
     this.paid = true;
-    this.customer?.earnPoints(this.total);
 
     return this.change;
   }

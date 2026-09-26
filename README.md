@@ -32,7 +32,7 @@ npm run typecheck  # ตรวจ type อย่างเดียว ไม่�
 | 2 | `Drink` | Drink.ts | เครื่องดื่ม — ขนาดแก้ว / ร้อน-เย็น-ปั่น / ท็อปปิ้ง |
 | 3 | `Food` | Food.ts | อาหาร — ระดับความเผ็ด / ไข่ดาว |
 | 4 | `Dessert` | Dessert.ts | ของหวาน — เพิ่มไอศกรีม |
-| 5 | `Customer` | Customer.ts | ลูกค้า — แต้มสะสมและระดับสมาชิก |
+| 5 | `Customer` | Customer.ts | ลูกค้า — ระดับสมาชิกและอัตราส่วนลด |
 | 6 | `Payment` *(abstract)* | Payment.ts | คลาสแม่ของวิธีชำระเงิน |
 | 7 | `CashPayment` | Payment.ts | จ่ายเงินสด (คิดเงินทอน) |
 | 8 | `QrPayment` | Payment.ts | จ่ายผ่าน QR พร้อมเพย์ |
@@ -94,10 +94,10 @@ classDiagram
         +number subtotal
     }
     class Customer {
-        -number points
+        +string name
         +MembershipTier tier
         +number discountRate
-        +earnPoints(number) number
+        +describe() string
     }
 
     class Payment {
@@ -143,7 +143,7 @@ classDiagram
 | **Abstraction** | `MenuItem`, `Payment` | 2 abstract class บอกว่า "ต้องทำอะไรได้" โดยไม่บอกวิธี สร้าง object จากคลาสแม่ตรง ๆ ไม่ได้ |
 | **Inheritance** | `MenuItem → Drink/Food/Dessert`, `Payment → CashPayment/QrPayment` | 2 ลำดับชั้น คลาสลูกได้ field และ method ของแม่มาใช้ฟรี |
 | **Polymorphism** | `calculatePrice()`, `prepare()`, `pay()` | จุดที่ชัดสุดคือ `Order.kitchenTickets()` — วนลูปเรียก `item.prepare()` ตัวเดียว แต่ได้ข้อความของบาร์ ของครัว หรือของหวาน ตามชนิดสินค้าจริง **ไม่มี `if` เช็คชนิดเลย** |
-| **Encapsulation** | `Customer.points`, `Order.items`, `MenuItem.basePrice` | ข้อมูลสำคัญเป็น `private` แก้ได้แค่ผ่าน method ที่ตรวจเงื่อนไขให้ — แจกแต้มมั่วไม่ได้ ต้องคิดจากยอดซื้อจริง และ getter `lines` คืนสำเนา ไม่ให้ใครแก้ array จริงข้างใน |
+| **Encapsulation** | `Order.items`, `MenuItem.basePrice`, `CashPayment.cashGiven` | ข้อมูลสำคัญเป็น `private` แก้ได้แค่ผ่าน method ที่ตรวจเงื่อนไขให้ — ข้างนอก `push` ของแถมเข้าบิลไม่ได้ เพราะ getter `lines` คืนสำเนา และ `Customer.tier` เป็น `readonly` ลูกค้าอัปเกรดตัวเองเป็นสมาชิกทองไม่ได้ |
 | **Composition** | `Order` มี `OrderLine[]`, `OrderLine` มี `MenuItem` | ความสัมพันธ์แบบ has-a |
 | **Method Overriding** | `override` ทุกจุดในคลาสลูก | เปิด `noImplicitOverride` ใน tsconfig ลืมใส่ `override` แล้วคอมไพล์ไม่ผ่าน |
 | **Custom Exception** | `CafeError` | `CafeApp` จับที่เดียวด้วย `if (error instanceof CafeError)` แล้ววนกลับเมนู โปรแกรมไม่ตาย |
@@ -179,8 +179,7 @@ classDiagram
 | อาหาร (F01–F03) | ระดับความเผ็ด → เพิ่มไข่ดาวไหม → จำนวน |
 | ของหวาน (S01–S03) | เพิ่มไอศกรีมไหม → จำนวน |
 
-**ส่วนลดสมาชิก:** สมาชิกเงิน 5% / สมาชิกทอง 10%
-(ใช้จ่าย 20 บาท = 1 แต้ม, 200 แต้ม = เงิน, 500 แต้ม = ทอง)
+**ส่วนลดสมาชิก:** แคชเชียร์เลือกระดับสมาชิกตอนเปิดบิล — ทั่วไป 0% / สมาชิกเงิน 5% / สมาชิกทอง 10%
 
 **ชำระเงิน:** เงินสด (คิดเงินทอนให้) หรือ QR พร้อมเพย์ (ต้องใส่เบอร์ 10 หรือ 13 หลัก)
 
@@ -191,7 +190,7 @@ classDiagram
         CAFE OOP - ใบเสร็จรับเงิน
 ============================================
 เลขที่บิล : A001
-ลูกค้า    : สมชาย [สมาชิกทอง - 534 แต้ม]
+ลูกค้า    : สมชาย [สมาชิกทอง]
 --------------------------------------------
 1. 2 x ลาเต้ (เย็น, แก้ว L) + เอสเพรสโซช็อตพิเศษ
    96.00 บาท x 2                  192.00 บาท
