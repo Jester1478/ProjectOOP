@@ -1,10 +1,7 @@
 import type { Customer } from './Customer.ts';
 import type { MenuItem } from './MenuItem.ts';
 import type { Payment } from './Payment.ts';
-import { CafeError, baht, round2 } from './utils.ts';
-
-/** ภาษีมูลค่าเพิ่ม (%) */
-const VAT_RATE = 7;
+import { CafeError, baht } from './utils.ts';
 
 /**
  * OrderLine - หนึ่งบรรทัดในบิล (สินค้า 1 อย่าง x จำนวน)  [คลาสที่ 9]
@@ -29,7 +26,7 @@ export class OrderLine {
   }
 
   get subtotal(): number {
-    return round2(this.unitPrice * this.quantity);
+    return this.unitPrice * this.quantity;
   }
 
   describe(): string {
@@ -100,27 +97,23 @@ export class Order {
 
   // ---------- การคิดเงิน ----------
 
+  // ทั้งระบบเป็นจำนวนเต็มบาท: ราคาสินค้าทุกตัวเป็นจำนวนเต็ม (MenuItem บังคับไว้)
+  // จุดเดียวที่อาจเกิดเศษคือส่วนลด % จึงปัดเศษทิ้งตรงนั้น
+  // ราคาในเมนูรวม VAT แล้ว (แบบร้านกาแฟทั่วไป) ไม่บวก VAT เพิ่มท้ายบิล
+
   get subtotal(): number {
-    return round2(this.items.reduce((sum, line) => sum + line.subtotal, 0));
+    return this.items.reduce((sum, line) => sum + line.subtotal, 0);
   }
 
-  /** ส่วนลดสมาชิก - ลูกค้าทั่วไปได้ 0 */
+  /** ส่วนลดสมาชิก ปัดเศษทิ้งให้เป็นจำนวนเต็มบาท - ลูกค้าทั่วไปได้ 0 */
   get discount(): number {
     const rate = this.customer?.discountRate ?? 0;
-    return round2((this.subtotal * rate) / 100);
-  }
-
-  get afterDiscount(): number {
-    return round2(this.subtotal - this.discount);
-  }
-
-  get vat(): number {
-    return round2((this.afterDiscount * VAT_RATE) / 100);
+    return Math.floor((this.subtotal * rate) / 100);
   }
 
   /** ยอดที่ลูกค้าต้องจ่ายจริง */
   get total(): number {
-    return round2(this.afterDiscount + this.vat);
+    return this.subtotal - this.discount;
   }
 
   // ---------- ชำระเงิน ----------
@@ -190,13 +183,12 @@ export class Order {
     out.push(row('ราคารวม', baht(this.subtotal)));
 
     if (this.discount > 0) {
-      out.push(row(`  ส่วนลด ${this.customer?.tier ?? ''}`, `-${baht(this.discount)}`));
-      out.push(row('หลังหักส่วนลด', baht(this.afterDiscount)));
+      const rate = this.customer?.discountRate ?? 0;
+      out.push(row(`  ส่วนลด ${this.customer?.tier ?? ''} ${rate}%`, `-${baht(this.discount)}`));
     }
 
-    out.push(row(`VAT ${VAT_RATE}%`, baht(this.vat)));
     out.push('-'.repeat(width));
-    out.push(row('ยอดชำระ', baht(this.total)));
+    out.push(row('ยอดชำระ (รวม VAT แล้ว)', baht(this.total)));
 
     if (this.paid) {
       out.push(`ชำระโดย ${this.paymentMethod}`);

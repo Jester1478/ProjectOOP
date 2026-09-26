@@ -42,13 +42,16 @@ export class CashPayment extends Payment {
   }
 
   protected override validate(amountDue: number): void {
+    if (!Number.isInteger(this.cashGiven)) {
+      throw new CafeError('รับเงินเป็นจำนวนเต็มบาทเท่านั้น (ร้านไม่รับสตางค์)');
+    }
     if (this.cashGiven < amountDue) {
       throw new CafeError(`จ่ายเงินไม่พอ (ต้องจ่าย ${baht(amountDue)} ได้รับ ${baht(this.cashGiven)})`);
     }
   }
 
   protected override process(amountDue: number): number {
-    return Math.round((this.cashGiven - amountDue) * 100) / 100;
+    return this.cashGiven - amountDue;
   }
 }
 

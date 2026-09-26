@@ -1,5 +1,4 @@
 import { Category, MenuItem } from './MenuItem.ts';
-import { round2 } from './utils.ts';
 
 /** ราคาไอศกรีมที่เสิร์ฟคู่ (บาท) */
 const ICE_CREAM_PRICE = 25;
@@ -30,7 +29,7 @@ export class Dessert extends MenuItem {
   }
 
   override calculatePrice(): number {
-    return round2(this.basePrice + (this.withIceCream ? ICE_CREAM_PRICE : 0));
+    return this.basePrice + (this.withIceCream ? ICE_CREAM_PRICE : 0);
   }
 
   override get fullName(): string {

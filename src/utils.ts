@@ -3,14 +3,9 @@
  * (ไม่ใช่คลาส เพราะไม่ได้เก็บสถานะอะไร)
  */
 
-/** ปัดเศษให้เหลือ 2 ตำแหน่ง - กันปัญหาทศนิยมของ JavaScript เช่น 55 * 1.2 = 66.00000000000001 */
-export function round2(amount: number): number {
-  return Math.round(amount * 100) / 100;
-}
-
-/** แปลงตัวเลขเป็นข้อความราคา เช่น 96 -> "96.00 บาท" */
+/** แปลงตัวเลขเป็นข้อความราคา เช่น 1250 -> "1,250 บาท" (ทั้งระบบเป็นจำนวนเต็มบาท ไม่มีสตางค์) */
 export function baht(amount: number): string {
-  return `${amount.toFixed(2)} บาท`;
+  return `${amount.toLocaleString('en-US')} บาท`;
 }
 
 /**

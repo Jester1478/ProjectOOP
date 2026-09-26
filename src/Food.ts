@@ -1,5 +1,4 @@
 import { Category, MenuItem } from './MenuItem.ts';
-import { round2 } from './utils.ts';
 
 export enum SpiceLevel {
   None = 'ไม่เผ็ด',
@@ -38,7 +37,7 @@ export class Food extends MenuItem {
   }
 
   override calculatePrice(): number {
-    return round2(this.basePrice + (this.friedEgg ? FRIED_EGG_PRICE : 0));
+    return this.basePrice + (this.friedEgg ? FRIED_EGG_PRICE : 0);
   }
 
   override get fullName(): string {

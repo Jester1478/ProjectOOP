@@ -128,9 +128,9 @@ ${'='.repeat(46)}
       console.log(`\n[${category}]`);
       for (const item of this.menu.filter((m) => m.category === category)) {
         const left = this.stock.get(item.id) ?? 0;
-        // เรียก describe() ตัวเดียว ได้ราคาของทุกชนิดสินค้า (Polymorphism)
+        // เรียก menuLabel() ตัวเดียว แต่เครื่องดื่มโชว์ราคา 3 ไซส์ อย่างอื่นโชว์ราคาเดียว (Polymorphism)
         console.log(
-          `  ${item.id}  ${item.describe().padEnd(30)} ${left === 0 ? 'ของหมด' : `เหลือ ${left}`}`,
+          `  ${item.id}  ${item.menuLabel().padEnd(34)} ${left === 0 ? 'ของหมด' : `เหลือ ${left}`}`,
         );
       }
     }
@@ -171,7 +171,10 @@ ${'='.repeat(46)}
     const sizes = [Size.Small, Size.Medium, Size.Large];
     const temps = [Temperature.Hot, Temperature.Iced, Temperature.Blended];
 
-    const size = await this.askNumber('  ขนาด 1=S(-15%) 2=M 3=L(+20%) (Enter = 2): ', 2);
+    const size = await this.askNumber(
+      `  ไซส์ 1=S(${drink.priceOf(Size.Small)}) 2=M(${drink.priceOf(Size.Medium)}) 3=L(${drink.priceOf(Size.Large)}) (Enter = 2): `,
+      2,
+    );
     const temp = await this.askNumber('  1=ร้อน 2=เย็น(+10) 3=ปั่น(+20) (Enter = 1): ', 1);
 
     console.log('  ท็อปปิ้ง:');
@@ -306,11 +309,12 @@ ${'='.repeat(46)}
       this.stock.set(item.id, stock);
     };
 
-    add(new Drink('D01', 'ลาเต้', 55), 20);
-    add(new Drink('D02', 'อเมริกาโน่', 45), 20);
-    add(new Drink('D03', 'มัทฉะลาเต้', 65), 10);
-    add(new Drink('D04', 'ชาไทย', 50), 15);
-    add(new Drink('D05', 'โกโก้', 60), 2);
+    // เครื่องดื่มกำหนดราคาแยกทุกไซส์ (บาท)
+    add(new Drink('D01', 'ลาเต้', { S: 45, M: 50, L: 55 }), 20);
+    add(new Drink('D02', 'อเมริกาโน่', { S: 40, M: 45, L: 50 }), 20);
+    add(new Drink('D03', 'มัทฉะลาเต้', { S: 55, M: 60, L: 65 }), 10);
+    add(new Drink('D04', 'ชาไทย', { S: 40, M: 45, L: 50 }), 15);
+    add(new Drink('D05', 'โกโก้', { S: 50, M: 55, L: 60 }), 2);
 
     add(new Food('F01', 'ข้าวผัดกุ้ง', 89, 10), 8);
     add(new Food('F02', 'สปาเกตตีคาร์โบนารา', 129, 12), 6);

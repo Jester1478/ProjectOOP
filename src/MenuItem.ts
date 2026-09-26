@@ -22,8 +22,9 @@ export abstract class MenuItem {
     readonly name: string,
     protected readonly basePrice: number,
   ) {
-    if (basePrice < 0) {
-      throw new RangeError(`ราคาของ "${name}" ติดลบไม่ได้`);
+    // ด่านเดียวที่กันสตางค์ไว้ทั้งระบบ - ราคาทุกสินค้าต้องเป็นจำนวนเต็มบาท
+    if (!Number.isInteger(basePrice) || basePrice < 0) {
+      throw new RangeError(`ราคาของ "${name}" ต้องเป็นจำนวนเต็มบาทและไม่ติดลบ (ได้รับ ${basePrice})`);
     }
   }
 
@@ -50,7 +51,8 @@ export abstract class MenuItem {
     return `[${this.category}] เตรียม ${this.fullName} (~${this.prepMinutes} นาที)`;
   }
 
-  describe(): string {
-    return `${this.fullName} — ${baht(this.calculatePrice())}`;
+  /** บรรทัดที่โชว์ในหน้าเมนู - Drink override ให้โชว์ราคาครบทุกไซส์ */
+  menuLabel(): string {
+    return `${this.name} — ${baht(this.basePrice)}`;
   }
 }
