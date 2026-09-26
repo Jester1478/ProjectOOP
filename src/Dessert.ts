@@ -24,10 +24,6 @@ export class Dessert extends MenuItem {
     return Category.Dessert;
   }
 
-  override get prepMinutes(): number {
-    return this.withIceCream ? 3 : 2;
-  }
-
   override calculatePrice(): number {
     return this.basePrice + (this.withIceCream ? ICE_CREAM_PRICE : 0);
   }

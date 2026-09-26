@@ -146,18 +146,6 @@ export class Order {
     );
   }
 
-  /** เวลารอประมาณ = งานที่นานที่สุด + ครึ่งหนึ่งของงานที่เหลือ (ทำขนานกันได้บางส่วน) */
-  estimatedWaitMinutes(): number {
-    const minutes = this.items.flatMap((line) =>
-      Array.from({ length: line.quantity }, () => line.item.prepMinutes),
-    );
-    if (minutes.length === 0) return 0;
-
-    const longest = Math.max(...minutes);
-    const rest = minutes.reduce((sum, m) => sum + m, 0) - longest;
-    return Math.ceil(longest + rest / 2);
-  }
-
   // ---------- ใบเสร็จ ----------
 
   receipt(): string {

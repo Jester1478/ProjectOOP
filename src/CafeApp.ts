@@ -195,14 +195,20 @@ ${'='.repeat(46)}
   }
 
   private async customizeFood(food: Food): Promise<Food> {
-    const levels = [SpiceLevel.None, SpiceLevel.Mild, SpiceLevel.Hot];
-    const spice = await this.askNumber('  1=ไม่เผ็ด 2=เผ็ดน้อย 3=เผ็ดมาก (Enter = 1): ', 1);
-    const egg = await this.askYesNo('  เพิ่มไข่ดาว +10.00 บาท? (y/N): ');
-    return food.withOptions(levels[spice - 1] ?? SpiceLevel.None, egg);
+    // ถามความเผ็ดเฉพาะเมนูที่เลือกเผ็ดได้ เมนูอื่นข้ามไปเลย
+    let level = SpiceLevel.None;
+    if (food.canBeSpicy) {
+      const levels = [SpiceLevel.None, SpiceLevel.Mild, SpiceLevel.Hot];
+      const spice = await this.askNumber('  1=ไม่เผ็ด 2=เผ็ดน้อย 3=เผ็ดมาก (Enter = 1): ', 1);
+      level = levels[spice - 1] ?? SpiceLevel.None;
+    }
+
+    const egg = await this.askYesNo('  เพิ่มไข่ดาว +10 บาท? (y/N): ');
+    return food.withOptions(level, egg);
   }
 
   private async customizeDessert(dessert: Dessert): Promise<Dessert> {
-    const iceCream = await this.askYesNo('  เพิ่มไอศกรีม +25.00 บาท? (y/N): ');
+    const iceCream = await this.askYesNo('  เพิ่มไอศกรีม +25 บาท? (y/N): ');
     return iceCream ? dessert.addIceCream() : dessert;
   }
 
@@ -214,7 +220,6 @@ ${'='.repeat(46)}
       return;
     }
     console.log(`\n${this.order.receipt()}`);
-    console.log(`รอประมาณ ${this.order.estimatedWaitMinutes()} นาที`);
   }
 
   // ==================== 4) ลบรายการ ====================
@@ -266,7 +271,6 @@ ${'='.repeat(46)}
     for (const ticket of this.order.kitchenTickets()) {
       console.log(`  ${ticket}`);
     }
-    console.log(`  เสร็จประมาณ ${this.order.estimatedWaitMinutes()} นาที`);
 
     console.log(`\n${this.order.receipt()}`);
     if (change > 0) {
@@ -316,9 +320,12 @@ ${'='.repeat(46)}
     add(new Drink('D04', 'ชาไทย', { S: 40, M: 45, L: 50 }), 15);
     add(new Drink('D05', 'โกโก้', { S: 50, M: 55, L: 60 }), 2);
 
-    add(new Food('F01', 'ข้าวผัดกุ้ง', 89, 10), 8);
-    add(new Food('F02', 'สปาเกตตีคาร์โบนารา', 129, 12), 6);
-    add(new Food('F03', 'แซนด์วิชแฮมชีส', 69, 5), 10);
+    // new Food(รหัส, ชื่อ, ราคา, เลือกเผ็ดได้ไหม) , สต็อก
+    add(new Food('F01', 'ข้าวผัดกุ้ง', 50, true), 8);
+    add(new Food('F02', 'สปาเกตตีคาร์โบนารา', 99, false), 6);
+    add(new Food('F03', 'แซนด์วิชแฮมชีส', 50, false), 10);
+    add(new Food('F04', 'สลัดผักรวม', 60, false), 12);
+    add(new Food('F05', 'ข้าวไข่ข้น', 65, false), 5);
 
     add(new Dessert('S01', 'บราวนี', 65), 12);
     add(new Dessert('S02', 'ชีสเค้ก', 79), 8);

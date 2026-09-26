@@ -71,11 +71,6 @@ export class Drink extends MenuItem {
     return Category.Drink;
   }
 
-  override get prepMinutes(): number {
-    const blending = this.temperature === Temperature.Blended ? 2 : 0;
-    return 3 + blending + this.toppings.length;
-  }
-
   override calculatePrice(): number {
     const surcharge = TEMPERATURE_SURCHARGE[this.temperature];
     const toppings = this.toppings.reduce((sum, topping) => sum + topping.price, 0);
@@ -91,7 +86,7 @@ export class Drink extends MenuItem {
   /** override ให้คำสั่งของบาร์ละเอียดกว่าคลาสแม่ */
   override prepare(): string {
     const verb = this.temperature === Temperature.Blended ? 'ปั่น' : 'ชง';
-    return `[บาร์] ${verb} ${this.fullName} (~${this.prepMinutes} นาที)`;
+    return `[บาร์] ${verb} ${this.fullName}`;
   }
 
   /** override ให้หน้าเมนูโชว์ราคาครบทุกไซส์ */

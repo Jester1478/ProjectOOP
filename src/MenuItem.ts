@@ -31,9 +31,6 @@ export abstract class MenuItem {
   /** คลาสลูกต้องบอกว่าตัวเองอยู่หมวดไหน */
   abstract get category(): Category;
 
-  /** คลาสลูกต้องบอกเวลาที่ใช้ทำ (นาที) */
-  abstract get prepMinutes(): number;
-
   /**
    * คลาสลูกต้องคิดราคาของตัวเอง
    * นี่คือหัวใจของ Polymorphism: เรียก item.calculatePrice() เหมือนกันหมด
@@ -48,7 +45,7 @@ export abstract class MenuItem {
 
   /** คำสั่งทำของสำหรับพนักงาน - คลาสลูก override ได้ */
   prepare(): string {
-    return `[${this.category}] เตรียม ${this.fullName} (~${this.prepMinutes} นาที)`;
+    return `[${this.category}] เตรียม ${this.fullName}`;
   }
 
   /** บรรทัดที่โชว์ในหน้าเมนู - Drink override ให้โชว์ราคาครบทุกไซส์ */
