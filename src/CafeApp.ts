@@ -138,12 +138,44 @@ ${'='.repeat(46)}
 
   // ==================== 2) สั่งของ ====================
 
+  /**
+   * โหมดสั่งของ - วนถามรหัสสินค้าไปเรื่อย ๆ สั่งได้หลายอย่างติดกัน
+   * พิมพ์ 0 เพื่อกลับเมนูหลัก / พิมพ์ M เพื่อดูเมนูอีกรอบ
+   */
   private async orderItem(): Promise<void> {
     this.printMenu();
 
-    const id = (await this.rl.question('\nรหัสสินค้า (Enter = ยกเลิก): ')).trim().toUpperCase();
-    if (id.length === 0) return;
+    while (true) {
+      const input = await this.rl.question(
+        `\nรหัสสินค้า (M = ดูเมนู, 0 = เสร็จสิ้น) [บิลตอนนี้ ${this.order.totalItems} ชิ้น ${baht(this.order.total)}]: `,
+      );
+      const id = input.trim().toUpperCase();
 
+      if (id === '0') {
+        console.log('>> กลับเมนูหลัก');
+        return;
+      }
+      if (id === 'M') {
+        this.printMenu();
+        continue;
+      }
+      if (id.length === 0) continue;
+
+      // จับ error ตรงนี้เลย สั่งพลาดหนึ่งอย่าง (เช่นของหมด) จะได้ไม่หลุดออกจากโหมดสั่งของ
+      try {
+        await this.orderOneItem(id);
+      } catch (error) {
+        if (error instanceof CafeError) {
+          console.log(`!! ${error.message}`);
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
+
+  /** สั่งสินค้า 1 อย่าง: หาจากรหัส -> ถามตัวเลือก -> ถามจำนวน -> ตัดสต็อก -> ใส่บิล */
+  private async orderOneItem(id: string): Promise<void> {
     const base = this.menu.find((item) => item.id === id);
     if (base === undefined) {
       console.log(`!! ไม่มีสินค้ารหัส "${id}" ในเมนู`);
@@ -164,7 +196,7 @@ ${'='.repeat(46)}
 
     this.reserveStock(item, quantity);
     this.order.addItem(item, quantity);
-    console.log(`\n>> เพิ่ม ${item.fullName} x${quantity} = ${baht(item.calculatePrice() * quantity)}`);
+    console.log(`>> เพิ่ม ${item.fullName} x${quantity} = ${baht(item.calculatePrice() * quantity)}`);
   }
 
   private async customizeDrink(drink: Drink): Promise<Drink> {
