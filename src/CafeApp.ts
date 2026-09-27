@@ -321,6 +321,11 @@ ${'='.repeat(46)}
   }
 
   private reserveStock(item: MenuItem, quantity: number): void {
+    // ตรวจจำนวนก่อนแตะสต็อก ไม่งั้น -1 จะทำให้สต็อกงอกเพิ่ม และ 2.5 จะทำให้สต็อกเป็นทศนิยม
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new CafeError(`จำนวนต้องเป็นเลขจำนวนเต็มมากกว่า 0 (ได้รับ ${quantity})`);
+    }
+
     const available = this.stock.get(item.id) ?? 0;
     if (available < quantity) {
       throw new CafeError(`"${item.name}" มีไม่พอ (ขอ ${quantity} เหลือ ${available})`);
