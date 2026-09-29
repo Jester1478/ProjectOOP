@@ -51,21 +51,18 @@ export class CafeApp {
     this.rl.close();
   }
 
-  /** ถามว่าใครเป็นลูกค้า - ไม่กรอกชื่อถือว่าเป็นลูกค้าทั่วไป (ไม่มีส่วนลด) */
+  /** เลือกระดับลูกค้าด้วยการกดหมายเลข - กด Enter เฉยๆ หรือกดเลขที่ไม่มี = ลูกค้าทั่วไป */
   private async askCustomer(): Promise<void> {
-    const name = (await this.rl.question('ชื่อลูกค้า (Enter = ลูกค้าทั่วไป): ')).trim();
-    if (name.length === 0) {
-      console.log('-> ลูกค้าทั่วไป');
-      return;
-    }
+    console.log(`
+เลือกระดับลูกค้า
+  1) ลูกค้าทั่วไป
+  2) สมาชิกเงิน (ลด 5%)
+  3) สมาชิกทอง (ลด 10%)`);
 
     const tiers = [MembershipTier.Regular, MembershipTier.Silver, MembershipTier.Gold];
-    const choice = await this.askNumber(
-      'ระดับสมาชิก 1=ทั่วไป 2=เงิน(5%) 3=ทอง(10%) (Enter = 1): ',
-      1,
-    );
+    const choice = await this.askNumber('\nเลือก (Enter = 1): ', 1);
 
-    this.customer = new Customer(name, tiers[choice - 1] ?? MembershipTier.Regular);
+    this.customer = new Customer(tiers[choice - 1] ?? MembershipTier.Regular);
     console.log(`-> ${this.customer.describe()} | ส่วนลด ${this.customer.discountRate}%`);
   }
 
@@ -358,11 +355,12 @@ ${'='.repeat(46)}
     add(new Drink('D05', 'โกโก้', { S: 50, M: 55, L: 60 }), 2);
 
     // new Food(รหัส, ชื่อ, ราคา, เลือกเผ็ดได้ไหม) , สต็อก
-    add(new Food('F01', 'ข้าวผัดกุ้ง', 50, true), 8);
+    add(new Food('F01', 'ข้าวผัดกุ้ง', 50, false), 8);
     add(new Food('F02', 'สปาเกตตีคาร์โบนารา', 99, false), 6);
     add(new Food('F03', 'แซนด์วิชแฮมชีส', 50, false), 10);
     add(new Food('F04', 'สลัดผักรวม', 60, false), 12);
     add(new Food('F05', 'ข้าวไข่ข้น', 65, false), 5);
+    add(new Food('F06', 'กระเพราหมูสับ', 60, true), 5);
 
     add(new Dessert('S01', 'บราวนี', 65), 12);
     add(new Dessert('S02', 'ชีสเค้ก', 79), 8);

@@ -16,20 +16,13 @@ const TIER_DISCOUNT: Readonly<Record<MembershipTier, number>> = {
  * Customer - ลูกค้า  [คลาสที่ 5]
  *
  * แนวคิด OOP:
- *  - Encapsulation: name กับ tier เป็น readonly ตั้งค่าได้ครั้งเดียวตอนสร้าง
+ *  - Encapsulation: tier เป็น readonly ตั้งค่าได้ครั้งเดียวตอนสร้าง
  *    หลังจากนั้นโค้ดข้างนอกเปลี่ยนไม่ได้เลย จะอัปเกรดตัวเองเป็นสมาชิกทองไม่ได้
  *  - Computed property: discountRate ไม่ได้เก็บเป็นตัวแปร แต่คำนวณจาก tier ทุกครั้ง
  *    จึงไม่มีทางเกิดสถานะเพี้ยนแบบ "เป็นลูกค้าทั่วไป แต่ได้ส่วนลด 10%"
  */
 export class Customer {
-  constructor(
-    readonly name: string,
-    readonly tier: MembershipTier = MembershipTier.Regular,
-  ) {
-    if (name.trim().length === 0) {
-      throw new RangeError('ชื่อลูกค้าว่างไม่ได้');
-    }
-  }
+  constructor(readonly tier: MembershipTier = MembershipTier.Regular) {}
 
   /** ส่วนลด (%) ที่ลูกค้าคนนี้ได้รับ */
   get discountRate(): number {
@@ -37,6 +30,6 @@ export class Customer {
   }
 
   describe(): string {
-    return `${this.name} [${this.tier}]`;
+    return this.tier;
   }
 }
