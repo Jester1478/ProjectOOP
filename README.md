@@ -70,10 +70,12 @@ classDiagram
         +withSize(Size) Drink
     }
     class Food {
+        +boolean canBeSpicy
         +SpiceLevel spiceLevel
         +boolean friedEgg
         +calculatePrice() number
         +prepare() string
+        +withOptions(SpiceLevel, boolean) Food
     }
     class Dessert {
         +boolean withIceCream
@@ -109,9 +111,13 @@ classDiagram
     }
     class CashPayment {
         -number cashGiven
+        #validate(number) void
+        #process(number) number
     }
     class QrPayment {
         -string promptPayId
+        #validate(number) void
+        #process(number) number
     }
 
     class CafeApp {
@@ -120,18 +126,22 @@ classDiagram
         +start() Promise
     }
     class CafeError
+    class Error
 
     MenuItem <|-- Drink
     MenuItem <|-- Food
     MenuItem <|-- Dessert
     Payment <|-- CashPayment
     Payment <|-- QrPayment
-    Order *-- OrderLine
-    Order o-- Customer
-    Order ..> Payment
-    OrderLine o-- MenuItem
-    CafeApp ..> Order
-    CafeApp ..> CafeError
+    Error <|-- CafeError
+    Order "1" *-- "0..*" OrderLine : items
+    OrderLine "0..*" o-- "1" MenuItem : item
+    Order "0..*" o-- "0..1" Customer : customer
+    Order ..> Payment : payWith()
+    CafeApp "1" o-- "1..*" MenuItem : menu
+    CafeApp "1" --> "1" Order : order
+    CafeApp "1" --> "0..1" Customer : customer
+    CafeApp ..> CafeError : catch
 ```
 
 ---
